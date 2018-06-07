@@ -44,9 +44,6 @@ namespace EsayCare.MES
         #region CH_var
 
         private int interval = 300;
-        public delegate void CbDelegate();
-        public delegate void CbDelegate<T1>(T1 obj1);
-        public delegate void CbDelegate<T1, T2>(T1 obj1, T2 obj2);
         public static event WorkStateDelegate WorkStateChange;
         private bool WorkState;
         private MesServer mesServer;
@@ -59,6 +56,9 @@ namespace EsayCare.MES
 
         public string WorkOrder;
         public string SerialNumber;
+
+        Queue<Func<ErrorMessage>> CheckQueue = new Queue<Func<ErrorMessage>>();
+
 
         /// <summary>
         /// 图片路径
@@ -98,6 +98,7 @@ namespace EsayCare.MES
         #region 窗体载入
 
         private void FormMain_Load(object sender, EventArgs e)
+
         {
             #region main 
 
@@ -112,6 +113,11 @@ namespace EsayCare.MES
             #endregion
 
             #region CH
+
+            CheckQueue.Enqueue(CheckConnection);
+            CheckQueue.Enqueue(LoadAnimalPic);
+            CheckQueue.Enqueue(GetWorkOrder);
+            CheckQueue.Enqueue(InitAppServer);
 
             dgvList.AutoGenerateColumns = false;
             SFCInterface = new DM_SFCInterface();
@@ -140,59 +146,42 @@ namespace EsayCare.MES
 
         private void AsyncLoadUIPluguns(object sender, DoWorkEventArgs e)
         {
-            ShowMessage(ColorHelper.MsgGray, "正在检查MES服务器网络连接...");
-            Thread.Sleep(interval);
-            if (CheckNetConnection(GlobalData.MESServerIP))
+            ErrorMessage errMsg = null;
+            var count = CheckQueue.Count;
+            for (int index = 0; index < count; index++)
             {
-                ShowMessage(ColorHelper.MsgGray, "正在检查EQC服务器网络连接...");
-                Thread.Sleep(interval);
-                if (CheckNetConnection(GlobalData.EQCServerIP))
+                var checkMethod = CheckQueue.Dequeue();
+                errMsg = checkMethod();
+                if (errMsg != null)
                 {
-                    ShowMessage(ColorHelper.MsgGray, "正在加载属性图片...");
-                    Thread.Sleep(interval);
-                    LoadAnimal();
-                    ShowMessage(ColorHelper.MsgGray, "正在加载制令单数据...");
-                    Thread.Sleep(interval);
-                    GetWOCollection("CH");
-                    ShowMessage(ColorHelper.MsgGray, "正在加载通讯服务...");
-                    Thread.Sleep(interval);
-                    InitAppServer();
+                    ShowMessage(ColorHelper.MsgRed, errMsg.ToString());
+                    break;
                 }
-                else
-                {
-                    ShowMessage(ColorHelper.MsgRed, "EQC服务器网络连接异常...");
-                    return;
-                }
-            }
-            else
-            {
-                ShowMessage(ColorHelper.MsgRed, "MES服务器网络连接异常...");
-                return;
             }
         }
 
-        #region 网络检查
-        private bool CheckNetConnection(string ip)
+        #region [MES/EQC网络检查]
+        private ErrorMessage CheckConnection()
         {
-            object lockObj = new object();
-            Ping ping = new Ping();
+            ShowMessage(ColorHelper.MsgGray, "正在检查MES-EQC服务器网络连接...");
+            Thread.Sleep(interval);
 
+            Ping ping = new Ping();
             try
             {
-                PingReply pingReply = ping.Send(ip, interval);
-                if (pingReply.Status == IPStatus.Success)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                PingReply pingMES = ping.Send(GlobalData.MESServerIP, interval);
+                if (pingMES.Status != IPStatus.Success)
+                    return new ErrorMessage() { ErrorCode = pingMES.Status.ToString(), ErrorInfo = "MES服务器网络连接故障..." };
+
+                PingReply pingEQC = ping.Send(GlobalData.EQCServerIP, interval);
+                if (pingMES.Status != IPStatus.Success)
+                    return new ErrorMessage() { ErrorCode = pingMES.Status.ToString(), ErrorInfo = "EQC服务器网络连接故障..." };
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return false;
+                return new ErrorMessage() { ErrorCode = "Error_MES-EQC", ErrorInfo = e.Message };
             }
+            return null;
         }
         #endregion
 
@@ -205,7 +194,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<bool>(this.SetWorkStateChange), isWork);
+                this.BeginInvoke(new Action<bool>(this.SetWorkStateChange), isWork);
             }
             else
             {
@@ -223,56 +212,17 @@ namespace EsayCare.MES
         /// <summary>
         /// 启动AppServer
         /// </summary>
-        private void InitAppServer()
+        private ErrorMessage InitAppServer()
         {
+            ShowMessage(ColorHelper.MsgGray, "正在加载通讯服务...");
+            Thread.Sleep(interval);
             try
             {
-                //方法一、采用当前应用程序中的【App.config】文件。
-                //var bootstrap = BootstrapFactory.CreateBootstrap();
-
-                //=>方法二、采用自定义独立【SuperSocket.config】配置文件
-                var bootstrap = BootstrapFactory.CreateBootstrapFromConfigFile("SuperSocket.config");
-
-                #region [=>自定义服务配置]
-                //IServerConfig serverConfig = new ServerConfig
-                //{
-                //    Name = "MesServer",// "AgileServer",//服务器实例的名称
-                //    ServerType = "EsayCare.MES.MesServer, EsayCare.MES",
-                //    Ip = "Any",//Any - 所有的IPv4地址 IPv6Any - 所有的IPv6地址
-                //    Mode = SocketMode.Tcp,//服务器运行的模式, Tcp (默认) 或者 Udp
-                //    Port = int.Parse("6543"),//服务器监听的端口
-                //    SendingQueueSize = 5000,//发送队列最大长度, 默认值为5
-                //    MaxConnectionNumber = 5000,//可允许连接的最大连接数
-                //    LogCommand = false,//是否记录命令执行的记录
-                //    LogBasicSessionActivity = false,//是否记录session的基本活动，如连接和断开
-                //    LogAllSocketException = false,//是否记录所有Socket异常和错误
-                //    //Security = "tls",//Empty, Tls, Ssl3. Socket服务器所采用的传输层加密协议
-                //    MaxRequestLength = 5000,//最大允许的请求长度，默认值为1024
-                //    TextEncoding = "UTF-8",//文本的默认编码，默认值是 ASCII，（###改成UTF-8,否则的话中文会出现乱码）
-                //    KeepAliveTime = 60,//网络连接正常情况下的keep alive数据的发送间隔, 默认值为 600, 单位为秒
-                //    KeepAliveInterval = 60,//Keep alive失败之后, keep alive探测包的发送间隔，默认值为 60, 单位为秒
-                //    ClearIdleSession = true, // 是否定时清空空闲会话，默认值是 false;（###如果开启定时60秒钟情况闲置的连接，为了保证客户端正常不掉线连接到服务器，故我们需要设置10秒的心跳数据包检查。也就是说清除闲置的时间必须大于心跳数据包的间隔时间，否则就会出现服务端主动踢掉闲置的TCP客户端连接。）
-                //    ClearIdleSessionInterval = 60,//: 清空空闲会话的时间间隔, 默认值是120, 单位为秒;
-                //    SyncSend = true,//:是否启用同步发送模式, 默认值: false;
-                //};
-                //var rootConfig = new RootConfig()
-                //{
-                //    MaxWorkingThreads = 5000,//线程池最大工作线程数量
-                //    MinWorkingThreads = 10,// 线程池最小工作线程数量;
-                //    MaxCompletionPortThreads = 5000,//线程池最大完成端口线程数量;
-                //    MinCompletionPortThreads = 10,// 线程池最小完成端口线程数量;
-                //    DisablePerformanceDataCollector = true,// 是否禁用性能数据采集;
-                //    PerformanceDataCollectInterval = 60,// 性能数据采集频率 (单位为秒, 默认值: 60);
-                //    LogFactory = "ConsoleLogFactory",//默认logFactory的名字
-                //    Isolation = IsolationMode.AppDomain// 服务器实例隔离级别                
-                //};
-                #endregion
-
+                //=>方法一、采用当前应用程序中的【App.config】文件BootstrapFactory.CreateBootstrap()。方法二、采用自定义独立【SuperSocket.config】配置文件
+                var bootstrap = BootstrapFactory.CreateBootstrapFromConfigFile("SuperSocket.config");  
                 if (!bootstrap.Initialize())
-                {
-                    ShowMessage(ColorHelper.MsgRed, "Failed to initialize!");
-                    return;
-                }
+                    return new ErrorMessage() { ErrorCode = "Init Error", ErrorInfo = "Failed to initialize!" };
+
                 StartResult startResult = bootstrap.Start();
                 if (startResult == StartResult.Success)
                 {
@@ -286,15 +236,16 @@ namespace EsayCare.MES
 
                     }
                     else
-                        this.ShowMessage(ColorHelper.MsgRed, "请检查配置文件中是否有可用的服务信息！");
+                        return new ErrorMessage() { ErrorCode = "StartError", ErrorInfo = "请检查配置文件中是否有可用的服务信息!" };
                 }
                 else
-                    this.ShowMessage(ColorHelper.MsgRed, "服务启动失败！");
+                    return new ErrorMessage() { ErrorCode = "StartError", ErrorInfo = "服务启动失败!" };
             }
             catch (Exception ex)
             {
-                ShowMessage(ex.Message);
+                return new ErrorMessage() { ErrorCode = "StartError", ErrorInfo = ex.Message };
             }
+            return null;
         }
 
         #endregion
@@ -414,33 +365,57 @@ namespace EsayCare.MES
         /// 查询彩盒制令单
         /// </summary>
         /// <param name="v"></param>
-        private void GetWOCollection(string v)
+        private ErrorMessage GetWorkOrder()
         {
-            DataTable dt = new DataTable();
-            dt = ySJMESInterface.GetWOCollection("CH");
+            ShowMessage(ColorHelper.MsgGray, "加载彩盒工单...");
+            Thread.Sleep(interval);
+            try
+            {
+                DataTable dt = new DataTable();
+                dt = ySJMESInterface.GetWOCollection("CH");
 
-            lstWorkOrder = new List<string>();
+                lstWorkOrder = new List<string>();
 
-            for (int i = 0; i < dt.Rows.Count; i++)
-                lstWorkOrder.Add(dt.Rows[i][0].ToString());
+                for (int i = 0; i < dt.Rows.Count; i++)
+                    lstWorkOrder.Add(dt.Rows[i][0].ToString());
+            }
+            catch (Exception e)
+            {
+                return new ErrorMessage() { ErrorCode = "LoadAnimalPic", ErrorInfo = e.Message };
+            }
+            return null;
         }
 
-        private void LoadAnimal()
+        #region 加载生肖图片
+
+        private ErrorMessage LoadAnimalPic()
         {
-            dicAnimals = new Dictionary<string, string>();
-            dicAnimals.Add("鼠", SelfPath + "shu.jpg");
-            dicAnimals.Add("牛", SelfPath + "niu.jpg");
-            dicAnimals.Add("虎", SelfPath + "hu.jpg");
-            dicAnimals.Add("兔", SelfPath + "tu.jpg");
-            dicAnimals.Add("龙", SelfPath + "long.jpg");
-            dicAnimals.Add("蛇", SelfPath + "she.jpg");
-            dicAnimals.Add("马", SelfPath + "ma.jpg");
-            dicAnimals.Add("羊", SelfPath + "yang.jpg");
-            dicAnimals.Add("猴", SelfPath + "hou.jpg");
-            dicAnimals.Add("鸡", SelfPath + "ji.jpg");
-            dicAnimals.Add("狗", SelfPath + "gou.jpg");
-            dicAnimals.Add("猪", SelfPath + "zhu.jpg");
+            ShowMessage(ColorHelper.MsgGray, "加载彩盒生肖图片...");
+            Thread.Sleep(interval);
+            try
+            {
+                dicAnimals = new Dictionary<string, string>();
+                dicAnimals.Add("鼠", SelfPath + "shu.jpg");
+                dicAnimals.Add("牛", SelfPath + "niu.jpg");
+                dicAnimals.Add("虎", SelfPath + "hu.jpg");
+                dicAnimals.Add("兔", SelfPath + "tu.jpg");
+                dicAnimals.Add("龙", SelfPath + "long.jpg");
+                dicAnimals.Add("蛇", SelfPath + "she.jpg");
+                dicAnimals.Add("马", SelfPath + "ma.jpg");
+                dicAnimals.Add("羊", SelfPath + "yang.jpg");
+                dicAnimals.Add("猴", SelfPath + "hou.jpg");
+                dicAnimals.Add("鸡", SelfPath + "ji.jpg");
+                dicAnimals.Add("狗", SelfPath + "gou.jpg");
+                dicAnimals.Add("猪", SelfPath + "zhu.jpg");
+            }
+            catch (Exception e)
+            {
+                return new ErrorMessage() { ErrorCode = "LoadAnimalPic", ErrorInfo = e.Message };
+            }
+            return null;
         }
+
+        #endregion
 
         #endregion
 
@@ -465,7 +440,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<string, MesSession>(this.ShowClientsMessage), status, mesSession);
+                this.BeginInvoke(new Action<string, MesSession>(this.ShowClientsMessage), status, mesSession);
             }
             else
             {
@@ -486,7 +461,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<string>(this.ShowSNCheckResult), msg);
+                this.BeginInvoke(new Action<string>(this.ShowSNCheckResult), msg);
             }
             else
             {
@@ -501,7 +476,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<string>(this.ShowMessage), msg);
+                this.BeginInvoke(new Action<string>(this.ShowMessage), msg);
             }
             else
             {
@@ -513,7 +488,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<IPEndPoint, string>(this.ShowMessage), client, msg);
+                this.BeginInvoke(new Action<IPEndPoint, string>(this.ShowMessage), client, msg);
             }
             else
             {
@@ -533,7 +508,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<Color, string>(this.ShowMessage), color, msg);
+                this.BeginInvoke(new Action<Color, string>(this.ShowMessage), color, msg);
             }
             else
             {
@@ -546,7 +521,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<int>(this.ShowConnectionCount), clientCount);
+                this.BeginInvoke(new Action<int>(this.ShowConnectionCount), clientCount);
             }
             else
             {
@@ -632,7 +607,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate(this.ClearArea));
+                this.BeginInvoke(new Action(this.ClearArea));
             }
             else
             {
@@ -653,7 +628,7 @@ namespace EsayCare.MES
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<string, string>(this.GetBoxInfor), wo, sn);
+                this.BeginInvoke(new Action<string, string>(this.GetBoxInfor), wo, sn);
             }
             else
             {
@@ -810,7 +785,7 @@ namespace EsayCare.MES
 
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new CbDelegate<string>(this.GetNextSN), wo);
+                this.BeginInvoke(new Action<string>(this.GetNextSN), wo);
             }
             else
             {
@@ -901,7 +876,7 @@ namespace EsayCare.MES
             {
                 try
                 {
-                    PingReply pingReply_Server = ping.Send(ip, interval); 
+                    PingReply pingReply_Server = ping.Send(ip, interval);
                     lock (lockObj)
                     {
                         if (pingReply_Server.Status == IPStatus.Success)
@@ -961,7 +936,7 @@ namespace EsayCare.MES
                     else
                     {
                         CenterImage.Image = Image.FromFile(ExePath + @"Res\Network2.png");
-                        ShowMessage(ColorHelper.MsgRed,"MES服务网络连接断开...");
+                        ShowMessage(ColorHelper.MsgRed, "MES服务网络连接断开...");
                     }
                 }
             }
@@ -1015,8 +990,6 @@ namespace EsayCare.MES
         }
 
         #endregion
-
-
 
     }
 }

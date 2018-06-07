@@ -64,4 +64,15 @@ namespace EsayCare.MES
 
         }
     }
+    public class ErrorMessage
+    {
+        public string ErrorCode { get; set; }
+
+        public string ErrorInfo { get; set; }
+
+        public override string ToString()
+        {
+            return string.Format("{0}:{1}", ErrorCode, ErrorInfo);
+        }
+    }
 }
