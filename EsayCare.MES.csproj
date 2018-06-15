@@ -71,6 +71,10 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="CircularProgressBar, Version=2.5.6737.419, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\CircularProgressBar.dll</HintPath>
+    </Reference>
     <Reference Include="CSkin">
       <HintPath>..\Dlls\CSkin.dll</HintPath>
     </Reference>
@@ -81,8 +85,17 @@
       <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MetroFramework">
-      <HintPath>..\Dlls\MetroFramework.dll</HintPath>
+    <Reference Include="MetroFramework, Version=1.3.0.0, Culture=neutral, PublicKeyToken=5f91a84759bf584a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\MetroFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="MetroFramework.Design, Version=1.3.0.0, Culture=neutral, PublicKeyToken=5f91a84759bf584a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\MetroFramework.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="MetroFramework.Fonts, Version=1.3.0.0, Culture=neutral, PublicKeyToken=5f91a84759bf584a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\MetroFramework.Fonts.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -125,6 +138,10 @@
       <HintPath>..\Dlls\Windows7ToolStripRenderer.dll</HintPath>
     </Reference>
     <Reference Include="WindowsBase" />
+    <Reference Include="WinFormAnimation, Version=1.5.6284.34583, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\WinFormAnimation.dll</HintPath>
+    </Reference>
     <Reference Include="Yamui.Framework, Version=1.8.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Debug\Yamui.Framework.dll</HintPath>
@@ -153,22 +170,44 @@
     <Compile Include="BaseForm\FormRoot.Designer.cs">
       <DependentUpon>FormRoot.cs</DependentUpon>
     </Compile>
+    <Compile Include="Commands\ISR.cs" />
+    <Compile Include="Commands\SND.cs" />
     <Compile Include="Filter\MesRequestInfo.cs" />
     <Compile Include="Filter\MesReceiveFilter.cs" />
+    <Compile Include="FrmCH_1_bak.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmCH_1_bak.designer.cs">
+      <DependentUpon>FrmCH_1_bak.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FrmCH_1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmCH_1.designer.cs">
+      <DependentUpon>FrmCH_1.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormMain.designer.cs">
       <DependentUpon>FormMain.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmMain.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmMain.designer.cs">
+      <DependentUpon>FrmMain.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Public\ConfigHelper.cs" />
+    <Compile Include="Public\DelegateState.cs" />
     <Compile Include="Public\GlobalData.cs" />
     <Compile Include="Public\JsonHelper.cs" />
     <Compile Include="Public\LogHelper.cs" />
     <Compile Include="Public\TransmitData.cs" />
     <Compile Include="Public\Utils.cs" />
+    <Compile Include="Settings.cs" />
     <EmbeddedResource Include="BaseForm\DlgBase.resx">
       <DependentUpon>DlgBase.cs</DependentUpon>
     </EmbeddedResource>
@@ -178,8 +217,18 @@
     <EmbeddedResource Include="BaseForm\FormRoot.resx">
       <DependentUpon>FormRoot.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="FrmCH_1_bak.resx">
+      <DependentUpon>FrmCH_1_bak.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmCH_1.resx">
+      <DependentUpon>FrmCH_1.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FrmMain.resx">
+      <DependentUpon>FrmMain.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -240,7 +289,9 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Folder Include="Control\" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -239,8 +239,7 @@ namespace EsayCare.MES
             {
                 msg = "日志记录出现异常:\r\n" + ex.Message;
             }
-            if (OnDisplayLog != null)
-                OnDisplayLog(msg);
+            OnDisplayLog?.Invoke(msg);
         }
 
         //将日志写入文件（每次打开关闭文件流）

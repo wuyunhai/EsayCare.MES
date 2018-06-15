@@ -1,5 +1,6 @@
 ﻿using System;
 using SuperSocket.SocketBase.Protocol;
+using System.Drawing;
 
 namespace EsayCare.MES
 {
@@ -29,7 +30,10 @@ namespace EsayCare.MES
         public string Body { get; set; } 
 
         public TransmitData  TData { get; set; }
-
+         
+        public Color MsgColor { get; set; }
+        public string Msg { get; set; } 
+         
         /// <summary>
         /// [不使用]
         /// </summary>

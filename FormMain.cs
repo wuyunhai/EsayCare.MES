@@ -19,7 +19,7 @@ using System.ComponentModel;
 
 namespace EsayCare.MES
 {
-    public delegate void WorkStateDelegate(bool IsWork);
+
     public partial class FormMain : Skin_Metro
     {
         #region var
@@ -44,8 +44,7 @@ namespace EsayCare.MES
         #region CH_var
 
         private int interval = 300;
-        public static event WorkStateDelegate WorkStateChange;
-        private bool WorkState;
+        private bool CHDriver_WorkState;
         private MesServer mesServer;
         private MesSession currentMesSession;
         private YSJMESInterface ySJMESInterface;
@@ -122,7 +121,11 @@ namespace EsayCare.MES
             dgvList.AutoGenerateColumns = false;
             SFCInterface = new DM_SFCInterface();
             ySJMESInterface = new YSJMESInterface();
-            WorkStateChange += FormMain_WorkStateChange;
+
+            DelegateState.CHDriverWorkStateChange = CHDriver_WorkStateChange;
+            DelegateState.NewRequestReceived = ShowMessage;
+            DelegateState.NewSessionConnected = NewSessionConnected;
+            DelegateState.SessionClosed = SessionClosed;
 
             BackgroundWorker bgw = new BackgroundWorker();
             bgw.DoWork += AsyncLoadUIPluguns;
@@ -185,20 +188,21 @@ namespace EsayCare.MES
         }
         #endregion
 
-        private void FormMain_WorkStateChange(bool isWork)
+        private void CHDriver_WorkStateChange(bool isWorking)
         {
-            SetWorkStateChange(isWork);
+            SetCHDriver_WorkState(isWorking);
         }
 
-        private void SetWorkStateChange(bool isWork)
+        private void SetCHDriver_WorkState(bool isWorking)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<bool>(this.SetWorkStateChange), isWork);
+                this.BeginInvoke(new Action<bool>(this.SetCHDriver_WorkState), isWorking);
             }
             else
             {
-                if (isWork)
+                CHDriver_WorkState = isWorking;
+                if (isWorking)
                     HandleWork();
                 else
                     HandleStop();
@@ -219,7 +223,7 @@ namespace EsayCare.MES
             try
             {
                 //=>方法一、采用当前应用程序中的【App.config】文件BootstrapFactory.CreateBootstrap()。方法二、采用自定义独立【SuperSocket.config】配置文件
-                var bootstrap = BootstrapFactory.CreateBootstrapFromConfigFile("SuperSocket.config");  
+                var bootstrap = BootstrapFactory.CreateBootstrapFromConfigFile("SuperSocket.config");
                 if (!bootstrap.Initialize())
                     return new ErrorMessage() { ErrorCode = "Init Error", ErrorInfo = "Failed to initialize!" };
 
@@ -227,16 +231,6 @@ namespace EsayCare.MES
                 if (startResult == StartResult.Success)
                 {
                     this.ShowMessage(ColorHelper.MsgGreen, "服务启动成功，等待设备连接 =>");
-                    mesServer = bootstrap.AppServers.Cast<MesServer>().FirstOrDefault();
-                    if (mesServer != null)
-                    {
-                        mesServer.NewSessionConnected += MesServer_NewSessionConnected;
-                        mesServer.NewRequestReceived += new RequestHandler<MesSession, MesRequestInfo>(MesServer_NewRequestReceived);
-                        mesServer.SessionClosed += MesServer_SessionClosed;
-
-                    }
-                    else
-                        return new ErrorMessage() { ErrorCode = "StartError", ErrorInfo = "请检查配置文件中是否有可用的服务信息!" };
                 }
                 else
                     return new ErrorMessage() { ErrorCode = "StartError", ErrorInfo = "服务启动失败!" };
@@ -250,83 +244,9 @@ namespace EsayCare.MES
 
         #endregion
 
-        #region 消息接收
-
-        private void MesServer_NewRequestReceived(MesSession session, MesRequestInfo requestInfo)
-        {
-            if (requestInfo.TData != null)
-            {
-                switch (requestInfo.Header)
-                {
-                    case "ISR":
-                        if (requestInfo.TData.CheckResult == CheckResultCode.OK.ToString())
-                        {
-                            WorkState = true;
-                            ShowMessage(ColorHelper.MsgGray, "请开始扫描彩盒ID条码.");
-                        }
-                        else
-                        {
-                            WorkState = false;
-                            ShowMessage(ColorHelper.MsgOrange, "设备未具备开工条件.");
-                        }
-                        if (WorkStateChange != null)
-                            WorkStateChange.Invoke(WorkState);
-
-                        break;
-                    case "SNC":
-                        ShowSNCheckResult(requestInfo.TData.CheckResult);
-                        if (requestInfo.TData.CheckResult == CheckResultCode.OK.ToString())
-                        {
-                            try
-                            {
-                                DataTable dt = SFCInterface.SFC_DM_CheckRoute(requestInfo.TData.SN, GlobalData.EquipmentNO, WorkOrder, "PASS");//FAIL 
-                                string CheckStatus = dt.Rows[0][0].ToString().ToString();
-                                string ReturnMsg = dt.Rows[0][1].ToString().ToString();
-                                if (CheckStatus == "1") //成功  
-                                {
-                                    ShowMessage(ColorHelper.MsgGreen, "MES过站成功>>" + CheckStatus + ":" + ReturnMsg);
-                                    // 加载下一条
-                                    GetNextSN(WorkOrder);
-                                }
-                                else
-                                {
-                                    ShowMessage(ColorHelper.MsgRed, "MES过站失败>>" + CheckStatus + ":" + ReturnMsg);
-                                    GetNextSN(WorkOrder);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                ShowMessage(ColorHelper.MsgRed, "执行过站方法出错>>" + ex.Message);
-                            }
-                        }
-                        else
-                        {
-                            for (int i = 3; i > 0; i--)
-                            {
-                                ShowMessage(ColorHelper.MsgRed, "彩盒SN校验失败，【" + i.ToString() + "】秒后重新下发.");
-                                Thread.Sleep(1000);
-                            }
-                            ShowMessage(ColorHelper.MsgOrange, "条码已重新下发.");
-                            SendFactory(FunCode.SND.ToString());
-                        }
-                        break;
-
-                    default:
-                        ShowMessage(ColorHelper.MsgRed, "未能识别该功能码：" + requestInfo.Header);
-                        break;
-                }
-            }
-            else
-            {
-                ShowMessage(ColorHelper.MsgRed, "提示：协议格式错误，协议格式：3位功能码 + 空格 + json字符串 + 回车换行符.");
-            }
-        }
-
-        #endregion
-
         #region 连接关闭事件
 
-        private void MesServer_SessionClosed(MesSession session, global::SuperSocket.SocketBase.CloseReason value)
+        void SessionClosed(MesSession session, global::SuperSocket.SocketBase.CloseReason value)
         {
             ShowMessage(session.RemoteEndPoint, "断开连接");
             MesSession outMesSession;
@@ -340,21 +260,13 @@ namespace EsayCare.MES
 
         #region =>[新连接事件]
 
-        void MesServer_NewSessionConnected(MesSession session)
+        void NewSessionConnected(MesSession session)
         {
-            //if (session.RemoteEndPoint.ToString() == GlobalData.EQCServerIP + ":" + GlobalData.EQCServerPort)
-            //{
             ShowMessage(session.RemoteEndPoint, "连接成功！");
             mOnLineConnections.TryAdd(session.SessionID, session);
             ShowConnectionCount(mOnLineConnections.Count);
             ShowClientsMessage("new", session);
             currentMesSession = session;
-            //}
-            //else
-            //{
-            //    ShowMessage(session.RemoteEndPoint, "非法设备，已断开其连接！");
-            //    session.Close();
-            //}
         }
 
         #endregion
@@ -504,6 +416,19 @@ namespace EsayCare.MES
                 lblInfo.Text = client.ToString() + " " + msg;
             }
         }
+        private void ShowMessage(MesSession mesSession, MesRequestInfo requestInfo)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<MesSession, MesRequestInfo>(this.ShowMessage), mesSession, requestInfo);
+            }
+            else
+            {
+                log.Info(requestInfo.Msg);
+                lblInfo.Text = requestInfo.Msg;
+                lblInfo.ForeColor = requestInfo.MsgColor;
+            }
+        }
         private void ShowMessage(Color color, string msg)
         {
             if (this.InvokeRequired)
@@ -574,17 +499,15 @@ namespace EsayCare.MES
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            if (WorkState)
+            if (CHDriver_WorkState)
             {
                 DialogResult diaR = DlgBox.Show("工单【" + cmbWO.Text + "】正在生产中，是否暂停生产？.", "提示", MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
-                ShowMessage(ColorHelper.MsgGray, "工单已暂停.");
+
                 if (diaR == DialogResult.OK)
                 {
-                    if (WorkStateChange != null)
-                    {
-                        WorkStateChange.Invoke(false);
-                        WorkState = false;
-                    }
+                    ShowMessage(ColorHelper.MsgGray, "工单已暂停.");
+                    DelegateState.CHDriverWorkStateChange?.Invoke(false); 
+                    CHDriver_WorkState = false;
                 }
             }
 
@@ -753,15 +676,15 @@ namespace EsayCare.MES
                 {
                     case "ISR":
                         ShowMessage("询问设备是否具备开工条件.");
-                        tData = new TransmitData(WorkOrder, GlobalData.EquipmentNO, null, null, null, null);
+                        tData = new TransmitData(WorkOrder, GlobalData.CH_1_DeviceID, null, null, null, null);
                         break;
                     case "SND":
                         ShowMessage("彩盒规格校验ok，下发SN打印.");
-                        tData = new TransmitData(WorkOrder, GlobalData.EquipmentNO, SerialNumber, null, null, null);
-                        tData.Items.Add("url", GlobalData.URL);
+                        tData = new TransmitData(WorkOrder, GlobalData.CH_1_DeviceID, SerialNumber, null, null, null);
+                        tData.TestItems.Add("url", GlobalData.URL);
                         break;
                 }
-                string msg = funCode + GlobalData.SpacePoint + JsonHelper.Serialize(tData) + Environment.NewLine;//一定要加上分隔符 
+                string msg = funCode + " " + JsonHelper.Serialize(tData) + Environment.NewLine;//一定要加上分隔符 
                 byte[] bMsg = System.Text.Encoding.UTF8.GetBytes(msg);//消息使用UTF-8编码
                 currentMesSession.Send(new ArraySegment<byte>(bMsg, 0, bMsg.Length));
             }

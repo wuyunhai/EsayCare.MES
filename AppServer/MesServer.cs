@@ -19,12 +19,14 @@ namespace EsayCare.MES
         protected override void OnStarted()
         {
             base.OnStarted();
+            GlobalData.currentMesServer = this;
             Logger.Info("Mes Server 启动");
         }
 
         protected override void OnStopped()
         {
             base.OnStopped();
+            GlobalData.currentMesServer = null;
             Logger.Info("Mes Server 停止");
         }
 

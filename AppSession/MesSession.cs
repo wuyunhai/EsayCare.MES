@@ -23,11 +23,13 @@ namespace EsayCare.MES
         protected override void OnSessionStarted()
         {
             base.OnSessionStarted();
+            GlobalData.currentMesSession = this;
+            DelegateState.NewSessionConnected?.Invoke(this);
         }
         protected override void HandleException(Exception e)
         {
             base.HandleException(e);
-
+            GlobalData.currentMesSession = null;
             Logger.Debug("异常信息：" + e.Message);
         }
         protected override void HandleUnknownRequest(MesRequestInfo requestInfo)
@@ -42,7 +44,8 @@ namespace EsayCare.MES
         protected override void OnSessionClosed(CloseReason reason)
         {
             base.OnSessionClosed(reason);
-
+            GlobalData.currentMesSession = null;
+            DelegateState.SessionClosed?.Invoke(this, reason); 
         }
     }
 }

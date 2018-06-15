@@ -48,7 +48,7 @@ namespace EsayCare.MES
             this.staStripVersion = new System.Windows.Forms.ToolStripStatusLabel();
             this.CenterImage = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerMain = new System.Windows.Forms.Timer(this.components);
-            this.MainSplit = new System.Windows.Forms.SplitContainer();
+            this.MainSplit = new CCWin.SkinControl.SkinSplitContainer();
             this.skinPanel1 = new CCWin.SkinControl.SkinPanel();
             this.lblDeviceName = new CCWin.SkinControl.SkinLabel();
             this.lblDeviceID = new CCWin.SkinControl.SkinLabel();
@@ -61,8 +61,8 @@ namespace EsayCare.MES
             this.lblSNC = new CCWin.SkinControl.SkinLabel();
             this.txbBoxID = new MetroFramework.Controls.MetroTextBox();
             this.cmbWO = new MetroFramework.Controls.MetroComboBox();
-            this.btnCancel = new MetroFramework.Controls.MetroButtonStyled();
-            this.btnOK = new MetroFramework.Controls.MetroButtonStyled();
+            this.btnCancel = new MetroFramework.Controls.MetroButton ();
+            this.btnOK = new MetroFramework.Controls.MetroButton ();
             this.skinPanel4 = new CCWin.SkinControl.SkinPanel();
             this.skinLabel11 = new CCWin.SkinControl.SkinLabel();
             this.lblCountU = new CCWin.SkinControl.SkinLabel();
@@ -429,7 +429,7 @@ namespace EsayCare.MES
             // 
             // txbBoxID
             // 
-            this.txbBoxID.Font = new System.Drawing.Font("Georgia", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+ 
             this.txbBoxID.FontSize = MetroFramework.MetroTextBoxSize.Medium;
             this.txbBoxID.FontWeight = MetroFramework.MetroTextBoxWeight.Bold;
             this.txbBoxID.Lines = new string[] {
@@ -438,7 +438,7 @@ namespace EsayCare.MES
             this.txbBoxID.Margin = new System.Windows.Forms.Padding(3, 4, 3, 3);
             this.txbBoxID.MaxLength = 32767;
             this.txbBoxID.Name = "txbBoxID";
-            this.txbBoxID.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
+ 
             this.txbBoxID.PasswordChar = '\0';
             this.txbBoxID.ScrollBars = System.Windows.Forms.ScrollBars.None;
             this.txbBoxID.SelectedText = "";
@@ -455,9 +455,7 @@ namespace EsayCare.MES
             // 
             this.cmbWO.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             this.cmbWO.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbWO.Enabled = false;
-            this.cmbWO.FontSize = MetroFramework.MetroLinkSize.Medium;
-            this.cmbWO.FontWeight = MetroFramework.MetroLinkWeight.Bold;
+            this.cmbWO.Enabled = false; 
             this.cmbWO.ItemHeight = 23;
             this.cmbWO.Location = new System.Drawing.Point(100, 45);
             this.cmbWO.Name = "cmbWO";
@@ -470,8 +468,7 @@ namespace EsayCare.MES
             // 
             // btnCancel
             // 
-            this.btnCancel.Enabled = false;
-            this.btnCancel.FlatAppearance = false;
+            this.btnCancel.Enabled = false; 
             this.btnCancel.FontSize = MetroFramework.MetroButtonSize.Medium;
             this.btnCancel.FontWeight = MetroFramework.MetroButtonWeight.Regular;
             this.btnCancel.Highlight = false;
@@ -487,8 +484,7 @@ namespace EsayCare.MES
             // 
             // btnOK
             // 
-            this.btnOK.Enabled = false;
-            this.btnOK.FlatAppearance = false;
+            this.btnOK.Enabled = false; 
             this.btnOK.FontSize = MetroFramework.MetroButtonSize.Medium;
             this.btnOK.FontWeight = MetroFramework.MetroButtonWeight.Regular;
             this.btnOK.Highlight = false;
@@ -949,7 +945,7 @@ namespace EsayCare.MES
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.ToolStripStatusLabel lblLoginUser;
         private System.Windows.Forms.ToolStripStatusLabel CenterImage;
-        private System.Windows.Forms.SplitContainer MainSplit;
+        private CCWin.SkinControl.SkinSplitContainer MainSplit;
         private CCWin.SkinControl.SkinTabControl tabCtrlBottom;
         private CCWin.SkinControl.SkinTabPage tabPageLog;
         private System.Windows.Forms.RichTextBox rtbLog;
@@ -957,8 +953,8 @@ namespace EsayCare.MES
         private CCWin.SkinControl.SkinPanel skinPanel5;
         private MetroFramework.Controls.MetroTextBox txbBoxID;
         private MetroFramework.Controls.MetroComboBox cmbWO;
-        private MetroFramework.Controls.MetroButtonStyled btnCancel;
-        private MetroFramework.Controls.MetroButtonStyled btnOK;
+        private MetroFramework.Controls.MetroButton  btnCancel;
+        private MetroFramework.Controls.MetroButton  btnOK;
         private CCWin.SkinControl.SkinPanel skinPanel4;
         private CCWin.SkinControl.SkinLabel skinLabel11;
         private CCWin.SkinControl.SkinLabel lblCountU;
